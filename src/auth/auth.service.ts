@@ -15,6 +15,10 @@ export class AuthService {
   async login({ email, password }: LoginDto) {
     const user = await this.userService.readByEmail(email);
 
+    if (!user.password) {
+      throw new UnauthorizedException('This account uses Google login');
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Password is incorrect');

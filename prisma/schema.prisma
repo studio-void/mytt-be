@@ -14,11 +14,110 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String
-  isAdmin   Boolean  @default(false)
+  id                  Int                    @id @default(autoincrement())
+  email               String                 @unique
+  password            String?
+  name                String
+  isAdmin             Boolean                @default(false)
+  googleAccounts      GoogleAccount[]
+  calendarEvents      CalendarEvent[]
+  createdMeetings     Meeting[]              @relation("createdMeetings")
+  meetingParticipants MeetingParticipant[]
+  sharingSettings     SharingSettings?
+  unavailableTimes    UnavailableTime[]
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+}
+
+model GoogleAccount {
+  id           String   @id @default(cuid())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleId     String   @unique
+  email        String
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, googleId])
+  @@index([userId])
+}
+
+model CalendarEvent {
+  id            String   @id @default(cuid())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleEventId String
+  title         String
+  description   String?
+  startTime     DateTime
+  endTime       DateTime
+  isAllDay      Boolean  @default(false)
+  isBusy        Boolean  @default(true)
+  syncedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@unique([userId, googleEventId])
+  @@index([userId, startTime])
+  @@index([userId])
+}
+
+model Meeting {
+  id            String                  @id @default(cuid())
+  creatorId     Int
+  creator       User                    @relation("createdMeetings", fields: [creatorId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  inviteCode    String                  @unique
+  startTime     DateTime
+  endTime       DateTime
+  timezone      String                  @default("UTC")
+  participants  MeetingParticipant[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([creatorId])
+}
+
+model MeetingParticipant {
+  id        String   @id @default(cuid())
+  meetingId String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email     String?
+  status    String   @default("pending")
+  joinedAt  DateTime @default(now())
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+  @@index([userId])
+}
+
+model SharingSettings {
+  id           String   @id @default(cuid())
+  userId       Int      @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shareLevel   String   @default("busy_only")
+  allowedUsers String[] @default([])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model UnavailableTime {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startTime DateTime
+  endTime   DateTime
+  reason    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId, startTime])
+  @@index([userId])
 }
